@@ -116,16 +116,18 @@ module processor(
     // Decode operation type
     assign op_decoder_execute = 32'b1 << dxinsn_out[31:27];
     wire isImmediate = op_decoder_execute[5];
+    wire isJump = op_decoder_execute[1];
     wire isBNE = op_decoder_execute[2];
+    wire isJAL = op_decoder_execute[3];
 
     // Select ALU operand and opcode
     assign data_B = isImmediate ? immediate : dxb_out;
-    assign alu_op = isBNE ? 5'd1 : (isImmediate ? 5'b0 : dxinsn_out[6:2]);
+    assign alu_op = (isBNE ? 5'd1 : (isImmediate ? 5'b0 : dxinsn_out[6:2]));
     
     // Use ALU to compute result
     alu ALU(.data_operandA(dxa_out), .data_operandB(data_B), .ctrl_ALUopcode(alu_op), .data_result(alu_out), .ctrl_shiftamt(dxinsn_out[11:7]), .overflow(overflow), .isNotEqual(isNotEqual), .isLessThan(isLessThan)); 
     
-    assign jump = (op_decoder_execute[1]);
+    assign jump = (isJump|isJAL);
     assign bne = (op_decoder_execute[2] & isNotEqual);
 
     // Latch ALU result
@@ -135,6 +137,10 @@ module processor(
     // Latch instruction
     wire [31:0] xminsn_out;
     register_32_bit XM_INSN(.q(xminsn_out), .d(dxinsn_out), .clk(~clock), .en(1'b1), .clr(reset));
+    // Latch PC
+    wire [31:0] xmpc_out;
+    register_32_bit XM_OP(.q(xmpc_out), .d(dxpc_out), .clk(~clock), .en(1'b1), .clr(reset));
+    
 
     // ================Memory STAGE================= //
     assign wren = 1'd0;
@@ -148,17 +154,21 @@ module processor(
     // Latch instruction
     wire [31:0] mwinsn_out;
     register_32_bit MW_INSN(.q(mwinsn_out), .d(xminsn_out), .clk(~clock), .en(1'b1), .clr(reset));
-
+    // Latch PC
+    wire [31:0] mwpc_out;
+    register_32_bit MW_OP(.q(mwpc_out), .d(xmpc_out), .clk(~clock), .en(1'b1), .clr(reset));
+    
     // ================WRITEBACK STAGE=============== //
 
-    // Set destination register and data to write
-    assign ctrl_writeReg = mwinsn_out[26:22];
-    assign data_writeReg = mwo_out;
-
-    // Set write enable
     wire [31:0] op_decoder_write;
     assign op_decoder_write = 32'b1 << mwinsn_out[31:27];
-    assign ctrl_writeEnable = op_decoder_write[0] | op_decoder_write[5];
+    
+    // Set destination register and data to write
+    assign ctrl_writeReg = op_decoder_write[3] ? 5'b11111 : mwinsn_out[26:22];
+    assign data_writeReg = op_decoder_write[3] ? mwpc_out : mwo_out;
+    
+    // Set write enable
+    assign ctrl_writeEnable = op_decoder_write[0] | op_decoder_write[5] | op_decoder_write[3];
 	
 	/* END CODE */
 
