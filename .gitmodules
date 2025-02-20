@@ -1,3 +1,9 @@
-[submodule "cp1-ALU"]
-	path = cp1-ALU
+[submodule "main/proc/cp1-ALU"]
+	path = main/proc/cp1-ALU
 	url = https://github.com/Saagar-Arya/cp1-ALU.git
+[submodule "main/proc/cp2-regfile"]
+	path = main/proc/cp2-regfile
+	url = https://github.com/Saagar-Arya/cp2-regfile.git
+[submodule "main/proc/cp3-multdiv"]
+	path = main/proc/cp3-multdiv
+	url = https://github.com/Saagar-Arya/cp3-multdiv.git
