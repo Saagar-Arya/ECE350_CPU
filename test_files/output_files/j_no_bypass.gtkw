@@ -1,0 +1,51 @@
+[*]
+[*] GTKWave Analyzer v3.3.100 (w)1999-2019 BSI
+[*] Thu Feb 20 07:41:22 2025
+[*]
+[dumpfile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\test_files\output_files\bne_no_bypass.vcd"
+[savefile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\j_no_bypass.gtkw"
+[timestart] 320850
+[size] 958 1048
+[pos] 2820 -53
+*-14.079127 360000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] Wrapper_tb.
+[treeopen] Wrapper_tb.CPU.
+[sst_width] 197
+[signals_width] 254
+[sst_expanded] 1
+[sst_vpaned_height] 656
+@28
+Wrapper_tb.CPU.clock
+Wrapper_tb.CPU.q_imem[31:0]
+Wrapper_tb.CPU.fdinsn_out[31:0]
+@24
+Wrapper_tb.CPU.ctrl_readRegA[4:0]
+Wrapper_tb.CPU.ctrl_readRegB[4:0]
+@22
+Wrapper_tb.CPU.data_readRegA[31:0]
+Wrapper_tb.CPU.data_readRegB[31:0]
+@28
+Wrapper_tb.CPU.dxinsn_out[31:0]
+@22
+Wrapper_tb.CPU.dxa_out[31:0]
+Wrapper_tb.CPU.dxb_out[31:0]
+@28
+Wrapper_tb.CPU.bne
+Wrapper_tb.CPU.jump
+@22
+Wrapper_tb.CPU.alu_out[31:0]
+@28
+Wrapper_tb.CPU.xminsn_out[31:0]
+@24
+Wrapper_tb.CPU.xmo_out[31:0]
+Wrapper_tb.CPU.mwo_out[31:0]
+@28
+Wrapper_tb.CPU.mwinsn_out[31:0]
+@24
+Wrapper_tb.CPU.nextPC[31:0]
+@22
+Wrapper_tb.RegisterFile.r10[31:0]
+@24
+Wrapper_tb.CPU.bne_target[31:0]
+[pattern_trace] 1
+[pattern_trace] 0
