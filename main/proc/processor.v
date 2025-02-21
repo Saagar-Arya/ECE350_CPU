@@ -127,17 +127,20 @@ module processor(
     // assign ji_type_execute = op_decoder_execute[1] | op_decoder_execute[3] | op_decoder_execute[22] | op_decoder_execute[21];
     // assign jii_type_execute = op_decoder_execute[4];
     
-    wire addi, bne, blt;
+    wire addi, bne, blt, sw, lw, addi_sw_lw;
     assign addi = op_decoder_execute[5]; 
     assign bne = op_decoder_execute[2];
     assign blt = op_decoder_execute[6];
     assign jump = op_decoder_execute[1];
     assign jal = op_decoder_execute[3];
     assign jr = op_decoder_execute[4];
+    assign sw = op_decoder_execute[7];
+    assign lw = op_decoder_execute[8];
+    assign addi_sw_lw = addi|sw|lw;
 
-    assign data_A = addi ? dxb_out : dxa_out;
-    assign data_B = addi ? {{15{dxinsn_out[16]}}, dxinsn_out[16:0]} : dxb_out;
-    assign alu_op = (bne | blt) ? 5'd1 : (addi ? 5'b0 : dxinsn_out[6:2]);
+    assign data_A = addi_sw_lw ? dxb_out : dxa_out;
+    assign data_B = addi_sw_lw ? {{15{dxinsn_out[16]}}, dxinsn_out[16:0]} : dxb_out;
+    assign alu_op = (bne | blt) ? 5'd1 : (addi_sw_lw ? 5'b0 : dxinsn_out[6:2]);
     // ALU
     alu ALU(.data_operandA(data_A), .data_operandB(data_B), .ctrl_ALUopcode(alu_op), .data_result(alu_out), .ctrl_shiftamt(shiftamt), .overflow(overflow), .isNotEqual(isNotEqual), .isLessThan(isLessThan)); 
 
@@ -148,6 +151,10 @@ module processor(
     wire [31:0] xmo_out;
     register_32_bit XM_O(.q(xmo_out), .d(alu_out), .clk(~clock), .en(1'b1), .clr(reset));
 
+    // Latch data from RD 
+    wire [31:0] xma_out;
+    register_32_bit XM_A(.q(xma_out), .d(dxa_out), .clk(~clock), .en(1'b1), .clr(reset));
+
     // Latch instruction
     wire [31:0] xminsn_out;
     register_32_bit XM_INSN(.q(xminsn_out), .d(dxinsn_out), .clk(~clock), .en(1'b1), .clr(reset));
@@ -157,13 +164,20 @@ module processor(
     register_32_bit XM_OP(.q(xmpc_out), .d(dxpc_out), .clk(~clock), .en(1'b1), .clr(reset));
     
     // ================Memory STAGE================= //
-    assign wren = 1'd0;
-    assign address_dmem = 32'd0;
-    assign data = 32'd0;
-    
+    wire[31:0] op_decoder_memory;
+    assign op_decoder_memory = 32'b1 << xminsn_out[31:27];
+
+    assign wren = op_decoder_memory[7];
+    assign address_dmem = xmo_out;
+    assign data = xma_out;
+
     // Latch ALU result
     wire [31:0] mwo_out;
     register_32_bit MW_O(.q(mwo_out), .d(xmo_out), .clk(~clock), .en(1'b1), .clr(reset));
+
+    // Latch Memory result
+    wire [31:0] mwmemory_out;
+    register_32_bit MW_MEMORY(.q(mwmemory_out), .d(q_dmem), .clk(~clock), .en(1'b1), .clr(reset));
 
     // Latch instruction
     wire [31:0] mwinsn_out;
@@ -181,10 +195,10 @@ module processor(
     // Set destination register and data to write
     // if JAL[3] set reg r31 to PC+!
     assign ctrl_writeReg = op_decoder_write[3] ? 5'b11111 : mwinsn_out[26:22];
-    assign data_writeReg = op_decoder_write[3] ? mwpc_out : mwo_out;
+    assign data_writeReg = op_decoder_write[8] ? mwmemory_out : (op_decoder_write[3] ? mwpc_out : mwo_out);
     
     // Set write enable for ALU Op and addi
-    assign ctrl_writeEnable = op_decoder_write[0] | op_decoder_write[5] | op_decoder_write[3];
+    assign ctrl_writeEnable = op_decoder_write[0] | op_decoder_write[5] | op_decoder_write[3] | op_decoder_write[8];
 	
 
 	/* END CODE */
