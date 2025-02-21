@@ -1,4 +1,5 @@
 .\processor.v
+.\processor_old.v
 .\RAM.v
 .\ROM.v
 .\Wrapper.v
