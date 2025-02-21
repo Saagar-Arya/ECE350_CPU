@@ -150,6 +150,9 @@ module processor(
     // Latch ALU result
     wire [31:0] xmo_out;
     register_32_bit XM_O(.q(xmo_out), .d(alu_out), .clk(~clock), .en(1'b1), .clr(reset));
+    // Latch ALU Error result
+    wire xm_error;
+    dffe_ref XM_ERROR(.q(xm_error), .d(overflow), .clk(~clock), .en(1'b1), .clr(reset));
 
     // Latch data from RD 
     wire [31:0] xma_out;
@@ -174,7 +177,10 @@ module processor(
     // Latch ALU result
     wire [31:0] mwo_out;
     register_32_bit MW_O(.q(mwo_out), .d(xmo_out), .clk(~clock), .en(1'b1), .clr(reset));
-
+    // Latch Error result
+    wire mw_error;
+    dffe_ref MW_ERROR(.q(mw_error), .d(xm_error), .clk(~clock), .en(1'b1), .clr(reset));
+    
     // Latch Memory result
     wire [31:0] mwmemory_out;
     register_32_bit MW_MEMORY(.q(mwmemory_out), .d(q_dmem), .clk(~clock), .en(1'b1), .clr(reset));
