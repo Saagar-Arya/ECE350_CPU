@@ -64,13 +64,13 @@ module processor(
 
 	/* YOUR CODE STARTS HERE */
     // ================Program Counter=================== //
-    wire branch, jump, jal, jr;
+    wire branch, jump, jal, jr, bex_take;
     wire[31:0] nextPC, branching_PC, target, PC_sum_out;
     register_32_bit PC(.q(address_imem), .d(nextPC), .clk(clock), .en(1'b1), .clr(reset));
     assign branching_PC = branch ? dxpc_out : address_imem;
     assign target = branch ? {15'd0, dxinsn_out[16:0]} : 32'd0;
 	sum PC_sum(.in1(branching_PC), .in2(target), .cin(~branch), .out(PC_sum_out));
-    assign nextPC = jr ? dxa_out : (jump|jal) ? {5'd0, dxinsn_out[26:0]} : PC_sum_out;
+    assign nextPC = jr ? dxa_out : (jump|jal|bex_take) ? {5'd0, dxinsn_out[26:0]} : PC_sum_out;
     // ================FETCH STAGE=================== //
 
     // Latch instruction from imem
@@ -95,7 +95,7 @@ module processor(
 
     // Decode RS RT register 
     assign ctrl_readRegA = ((i_type_decode | jii_type_decode) ? fdinsn_out[26:22] : fdinsn_out[21:17]);
-    assign ctrl_readRegB = (i_type_decode ? fdinsn_out[21:17] : fdinsn_out[16:12]);
+    assign ctrl_readRegB = op_decoder_decode[22] ? 5'b11110 : (i_type_decode ? fdinsn_out[21:17] : fdinsn_out[16:12]);
 
     // Latch data from RS RT 
     wire [31:0] dxa_out;
@@ -127,7 +127,7 @@ module processor(
     // assign ji_type_execute = op_decoder_execute[1] | op_decoder_execute[3] | op_decoder_execute[22] | op_decoder_execute[21];
     // assign jii_type_execute = op_decoder_execute[4];
     
-    wire addi, bne, blt, sw, lw, addi_sw_lw;
+    wire addi, bne, blt, sw, lw, addi_sw_lw, bex;
     assign addi = op_decoder_execute[5]; 
     assign bne = op_decoder_execute[2];
     assign blt = op_decoder_execute[6];
@@ -138,6 +138,9 @@ module processor(
     assign lw = op_decoder_execute[8];
     assign addi_sw_lw = addi|sw|lw;
 
+    assign bex = op_decoder_execute[22];
+    assign bex_take = (bex & (|dxb_out));
+
     assign data_A = addi_sw_lw ? dxb_out : dxa_out;
     assign data_B = addi_sw_lw ? {{15{dxinsn_out[16]}}, dxinsn_out[16:0]} : dxb_out;
     assign alu_op = (bne | blt) ? 5'd1 : (addi_sw_lw ? 5'b0 : dxinsn_out[6:2]);
@@ -146,7 +149,6 @@ module processor(
 
     //set branch if BNE or BLT conditions are met
     assign branch = (bne & isNotEqual) | (blt & isLessThan);
-
     // Latch ALU result
     wire [31:0] xmo_out;
     register_32_bit XM_O(.q(xmo_out), .d(alu_out), .clk(~clock), .en(1'b1), .clr(reset));
@@ -197,14 +199,20 @@ module processor(
     // Instruction decoder writeback stage
     wire [31:0] op_decoder_write;
     assign op_decoder_write = 32'b1 << mwinsn_out[31:27];
-    
+    wire setx, add_write, addi_write, sub_write;
+    wire [31:0] exception_write;
+    assign setx = op_decoder_write[21];
+    assign add_write = op_decoder_write[0] & (~(|mwinsn_out[6:2])) & mw_error;
+    assign addi_write = op_decoder_write[5] & mw_error;
+    assign sub_write = op_decoder_write[0] & (~(|mwinsn_out[6:3])) & mwinsn_out[2] & mw_error;
+    assign exception_write = add_write ? 32'd1 : (addi_write ? 32'd2 : (sub_write ? 32'd3 : 32'd0));
     // Set destination register and data to write
-    // if JAL[3] set reg r31 to PC+!
-    assign ctrl_writeReg = op_decoder_write[3] ? 5'b11111 : mwinsn_out[26:22];
-    assign data_writeReg = op_decoder_write[8] ? mwmemory_out : (op_decoder_write[3] ? mwpc_out : mwo_out);
+    // if JAL[3] set reg r31 to PC+1
+    assign ctrl_writeReg = (add_write | addi_write | sub_write) ? 5'b11110 : (setx ? 5'b11110 : (op_decoder_write[3] ? 5'b11111 : mwinsn_out[26:22]));
+    assign data_writeReg = (add_write | addi_write | sub_write) ? exception_write : (setx ? {5'd0, mwinsn_out[26:0]} : (op_decoder_write[8] ? mwmemory_out : (op_decoder_write[3] ? mwpc_out : mwo_out)));
     
     // Set write enable for ALU Op and addi
-    assign ctrl_writeEnable = op_decoder_write[0] | op_decoder_write[5] | op_decoder_write[3] | op_decoder_write[8];
+    assign ctrl_writeEnable = op_decoder_write[0] | op_decoder_write[5] | op_decoder_write[3] | op_decoder_write[8] | setx;
 	
 
 	/* END CODE */
