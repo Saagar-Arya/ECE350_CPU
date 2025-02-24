@@ -1,13 +1,13 @@
 [*]
 [*] GTKWave Analyzer v3.3.100 (w)1999-2019 BSI
-[*] Mon Feb 24 05:51:46 2025
+[*] Mon Feb 24 18:08:06 2025
 [*]
-[dumpfile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\test_files\output_files\multdiv_no_bypass_slow.vcd"
+[dumpfile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\test_files\output_files\exceptions_no_bypass.vcd"
 [savefile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\frame.gtkw"
-[timestart] 317740
+[timestart] 1222910
 [size] 958 1048
-[pos] 1834 -79
-*-14.079127 307680 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] 1808 -82
+*-14.079127 1238570 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] Wrapper_tb.
 [treeopen] Wrapper_tb.RegisterFile.
 [sst_width] 197
@@ -19,7 +19,10 @@ Wrapper_tb.CPU.clock
 Wrapper_tb.CPU.q_imem[31:0]
 @24
 Wrapper_tb.CPU.address_imem[31:0]
+@420
+Wrapper_tb.CPU.branching_PC[31:0]
 @28
+Wrapper_tb.CPU.branch
 Wrapper_tb.CPU.fdinsn_out[31:0]
 @420
 Wrapper_tb.CPU.fdpc_out[31:0]
@@ -100,18 +103,20 @@ Wrapper_tb.CPU.xmo_out[31:0]
 Wrapper_tb.CPU.mwinsn_out[31:0]
 @420
 Wrapper_tb.CPU.mwo_out[31:0]
+Wrapper_tb.CPU.ctrl_writeReg[4:0]
 @28
-Wrapper_tb.CPU.wren
+Wrapper_tb.CPU.ctrl_writeEnable
+@24
+Wrapper_tb.CPU.data_writeReg[31:0]
 @420
 Wrapper_tb.CPU.xma_out[31:0]
 @24
 Wrapper_tb.CPU.nextPC[31:0]
-@420
-Wrapper_tb.RegisterFile.r19[31:0]
-Wrapper_tb.RegisterFile.r20[31:0]
 @421
-Wrapper_tb.RegisterFile.r21[31:0]
+Wrapper_tb.RegisterFile.r3[31:0]
 @420
-Wrapper_tb.RegisterFile.r22[31:0]
+Wrapper_tb.RegisterFile.r20[31:0]
+@24
+Wrapper_tb.RegisterFile.r30[31:0]
 [pattern_trace] 1
 [pattern_trace] 0

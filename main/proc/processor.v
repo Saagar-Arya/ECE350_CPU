@@ -64,10 +64,11 @@ module processor(
 
 	/* YOUR CODE STARTS HERE */
     // ================Program Counter=================== //
-    wire branch, jump, jal, jr, bex_take, mult, div, not_stalling;
-    assign not_stalling = ~((mult|div) & (~multdiv_ready));
+    wire branch, jump, jal, jr, bex_take, mult, div, not_stalling, flushing;
     wire[31:0] nextPC, branching_PC, target, PC_sum_out;
-    
+    assign not_stalling = ~((mult|div) & (~multdiv_ready));
+    assign flushing = (branch | jump | jal | jr | bex_take) ;
+
     register_32_bit PC(.q(address_imem), .d(nextPC), .clk(~clock), .en(not_stalling), .clr(reset));
     assign branching_PC = branch ? dxpc_out : address_imem;
     assign target = branch ? {15'd0, dxinsn_out[16:0]} : 32'd0;
@@ -77,11 +78,11 @@ module processor(
 
     // Latch instruction from imem
     wire [31:0] fdinsn_out;
-    register_32_bit FD_INSN(.q(fdinsn_out), .d(q_imem), .clk(~clock), .en(not_stalling), .clr(reset));
+    register_32_bit FD_INSN(.q(fdinsn_out), .d(q_imem), .clk(~clock), .en(not_stalling), .clr(reset|flushing));
     
     // Latch PC
     wire [31:0] fdpc_out;
-    register_32_bit FD_OP(.q(fdpc_out), .d(PC_sum_out), .clk(~clock), .en(not_stalling), .clr(reset));
+    register_32_bit FD_OP(.q(fdpc_out), .d(PC_sum_out), .clk(~clock), .en(not_stalling), .clr(reset|flushing));
     
     // ================DECODE STAGE================== //
     // Instruction decoder decode stage
@@ -230,7 +231,7 @@ module processor(
     // Set destination register and data to write
     // if JAL[3] set reg r31 to PC+1
     assign ctrl_writeReg = (add_write | addi_write | sub_write | mult_write | div_write) ? 5'b11110 : (setx ? 5'b11110 : (op_decoder_write[3] ? 5'b11111 : mwinsn_out[26:22]));
-    assign data_writeReg = (add_write | addi_write | sub_write) ? exception_write : (setx ? {5'd0, mwinsn_out[26:0]} : (op_decoder_write[8] ? mwmemory_out : (op_decoder_write[3] ? mwpc_out : mwo_out)));
+    assign data_writeReg = (add_write | addi_write | sub_write | mult_write | div_write) ? exception_write : (setx ? {5'd0, mwinsn_out[26:0]} : (op_decoder_write[8] ? mwmemory_out : (op_decoder_write[3] ? mwpc_out : mwo_out)));
     
     // Set write enable for ALU Op and addi
     assign ctrl_writeEnable = op_decoder_write[0] | op_decoder_write[5] | op_decoder_write[3] | op_decoder_write[8] | setx;
