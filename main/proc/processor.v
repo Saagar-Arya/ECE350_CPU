@@ -64,7 +64,8 @@ module processor(
 
 	/* YOUR CODE STARTS HERE */
     // ================Program Counter=================== //
-    wire branch, jump, jal, jr, bex_take;
+    wire branch, jump, jal, jr, bex_take, mult, div, not_stalling;
+    assign not_stalling = (~(mult & ~multdiv_ready))|(~(div & ~multdiv_ready));
     wire[31:0] nextPC, branching_PC, target, PC_sum_out;
     register_32_bit PC(.q(address_imem), .d(nextPC), .clk(clock), .en(1'b1), .clr(reset));
     assign branching_PC = branch ? dxpc_out : address_imem;
@@ -113,9 +114,9 @@ module processor(
 
     // ================EXECUTE STAGE================= //
         
-    wire [31:0] alu_out, op_decoder_execute, data_A, data_B;
+    wire [31:0] alu_out, op_decoder_execute, data_A, data_B, multdiv_out;
     wire [4:0] alu_op, shiftamt;
-    wire isNotEqual, isLessThan, overflow;
+    wire isNotEqual, isLessThan, overflow, multdiv_ready, multdiv_exception;
     assign shiftamt = dxinsn_out[11:7];
     
     // Instruction decoder Execute stage
@@ -137,24 +138,40 @@ module processor(
     assign sw = op_decoder_execute[7];
     assign lw = op_decoder_execute[8];
     assign addi_sw_lw = addi|sw|lw;
-
+    assign mult = op_decoder_execute[0] & ((~dxinsn_out[6]) & (~dxinsn_out[5]) & dxinsn_out[4] & dxinsn_out[3] & (~dxinsn_out[2]));
+    assign div = op_decoder_execute[0] & ((~dxinsn_out[6]) & (~dxinsn_out[5]) & dxinsn_out[4] & dxinsn_out[3] & (dxinsn_out[2]));
     assign bex = op_decoder_execute[22];
     assign bex_take = (bex & (|dxb_out));
 
     assign data_A = addi_sw_lw ? dxb_out : dxa_out;
     assign data_B = addi_sw_lw ? {{15{dxinsn_out[16]}}, dxinsn_out[16:0]} : dxb_out;
     assign alu_op = (bne | blt) ? 5'd1 : (addi_sw_lw ? 5'b0 : dxinsn_out[6:2]);
+
+    wire mult_trigger, mult_t;
+    dffe_ref MULT(.q(mult_t), .d(mult), .clk(~clock), .en(1'd1), .clr(reset));
+    assign mult_trigger = mult & mult_t;
+
+    wire div_trigger, div_t;
+    dffe_ref DIV(.q(div_t), .d(div), .clk(~clock), .en(1'd1), .clr(reset));
+    assign div_trigger = div & div_t;
+
     // ALU
     alu ALU(.data_operandA(data_A), .data_operandB(data_B), .ctrl_ALUopcode(alu_op), .data_result(alu_out), .ctrl_shiftamt(shiftamt), .overflow(overflow), .isNotEqual(isNotEqual), .isLessThan(isLessThan)); 
+    multdiv MULTDIV(.data_operandA(dxa_out), .data_operandB(dxb_out), .ctrl_MULT(mult_trigger), .ctrl_DIV(div_trigger), .clock(~clock), .data_result(multdiv_out), .data_exception(multdiv_exception), .data_resultRDY(multdiv_ready));
+
+    wire[31:0] math_out;
+    assign math_out = (mult|div) ? multdiv_out : alu_out;
+    wire exception;
+    assign exception = (mult|div) ? multdiv_exception : overflow;
 
     //set branch if BNE or BLT conditions are met
     assign branch = (bne & isNotEqual) | (blt & isLessThan);
     // Latch ALU result
     wire [31:0] xmo_out;
-    register_32_bit XM_O(.q(xmo_out), .d(alu_out), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit XM_O(.q(xmo_out), .d(math_out), .clk(~clock), .en(1'b1), .clr(reset));
     // Latch ALU Error result
     wire xm_error;
-    dffe_ref XM_ERROR(.q(xm_error), .d(overflow), .clk(~clock), .en(1'b1), .clr(reset));
+    dffe_ref XM_ERROR(.q(xm_error), .d(exception), .clk(~clock), .en(1'b1), .clr(reset));
 
     // Latch data from RD 
     wire [31:0] xma_out;
