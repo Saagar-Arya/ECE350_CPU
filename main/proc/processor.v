@@ -65,9 +65,10 @@ module processor(
 	/* YOUR CODE STARTS HERE */
     // ================Program Counter=================== //
     wire branch, jump, jal, jr, bex_take, mult, div, not_stalling;
-    assign not_stalling = (~(mult & ~multdiv_ready))|(~(div & ~multdiv_ready));
+    assign not_stalling = ~((mult|div) & (~multdiv_ready));
     wire[31:0] nextPC, branching_PC, target, PC_sum_out;
-    register_32_bit PC(.q(address_imem), .d(nextPC), .clk(clock), .en(1'b1), .clr(reset));
+    
+    register_32_bit PC(.q(address_imem), .d(nextPC), .clk(~clock), .en(not_stalling), .clr(reset));
     assign branching_PC = branch ? dxpc_out : address_imem;
     assign target = branch ? {15'd0, dxinsn_out[16:0]} : 32'd0;
 	sum PC_sum(.in1(branching_PC), .in2(target), .cin(~branch), .out(PC_sum_out));
@@ -76,11 +77,11 @@ module processor(
 
     // Latch instruction from imem
     wire [31:0] fdinsn_out;
-    register_32_bit FD_INSN(.q(fdinsn_out), .d(q_imem), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit FD_INSN(.q(fdinsn_out), .d(q_imem), .clk(~clock), .en(not_stalling), .clr(reset));
     
     // Latch PC
     wire [31:0] fdpc_out;
-    register_32_bit FD_OP(.q(fdpc_out), .d(address_imem), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit FD_OP(.q(fdpc_out), .d(PC_sum_out), .clk(~clock), .en(not_stalling), .clr(reset));
     
     // ================DECODE STAGE================== //
     // Instruction decoder decode stage
@@ -101,16 +102,16 @@ module processor(
     // Latch data from RS RT 
     wire [31:0] dxa_out;
     wire [31:0] dxb_out;
-    register_32_bit DX_A(.q(dxa_out), .d(data_readRegA), .clk(~clock), .en(1'b1), .clr(reset));
-    register_32_bit DX_B(.q(dxb_out), .d(data_readRegB), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit DX_A(.q(dxa_out), .d(data_readRegA), .clk(~clock), .en(not_stalling), .clr(reset));
+    register_32_bit DX_B(.q(dxb_out), .d(data_readRegB), .clk(~clock), .en(not_stalling), .clr(reset));
 
     // Latch instruction
     wire [31:0] dxinsn_out;
-    register_32_bit DX_INSN(.q(dxinsn_out), .d(fdinsn_out), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit DX_INSN(.q(dxinsn_out), .d(fdinsn_out), .clk(~clock), .en(not_stalling), .clr(reset));
     
     // Latch PC
     wire [31:0] dxpc_out;
-    register_32_bit DX_OP(.q(dxpc_out), .d(fdpc_out), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit DX_OP(.q(dxpc_out), .d(fdpc_out), .clk(~clock), .en(not_stalling), .clr(reset));
 
     // ================EXECUTE STAGE================= //
         
@@ -149,15 +150,15 @@ module processor(
 
     wire mult_trigger, mult_t;
     dffe_ref MULT(.q(mult_t), .d(mult), .clk(~clock), .en(1'd1), .clr(reset));
-    assign mult_trigger = mult & mult_t;
+    assign mult_trigger = mult & ~mult_t;
 
     wire div_trigger, div_t;
     dffe_ref DIV(.q(div_t), .d(div), .clk(~clock), .en(1'd1), .clr(reset));
-    assign div_trigger = div & div_t;
+    assign div_trigger = div & ~div_t;
 
     // ALU
     alu ALU(.data_operandA(data_A), .data_operandB(data_B), .ctrl_ALUopcode(alu_op), .data_result(alu_out), .ctrl_shiftamt(shiftamt), .overflow(overflow), .isNotEqual(isNotEqual), .isLessThan(isLessThan)); 
-    multdiv MULTDIV(.data_operandA(dxa_out), .data_operandB(dxb_out), .ctrl_MULT(mult_trigger), .ctrl_DIV(div_trigger), .clock(~clock), .data_result(multdiv_out), .data_exception(multdiv_exception), .data_resultRDY(multdiv_ready));
+    multdiv MULTDIV(.data_operandA(dxa_out), .data_operandB(dxb_out), .ctrl_MULT(mult_trigger), .ctrl_DIV(div_trigger), .clock(clock), .data_result(multdiv_out), .data_exception(multdiv_exception), .data_resultRDY(multdiv_ready));
 
     wire[31:0] math_out;
     assign math_out = (mult|div) ? multdiv_out : alu_out;
@@ -168,22 +169,22 @@ module processor(
     assign branch = (bne & isNotEqual) | (blt & isLessThan);
     // Latch ALU result
     wire [31:0] xmo_out;
-    register_32_bit XM_O(.q(xmo_out), .d(math_out), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit XM_O(.q(xmo_out), .d(math_out), .clk(~clock), .en(not_stalling), .clr(reset));
     // Latch ALU Error result
     wire xm_error;
-    dffe_ref XM_ERROR(.q(xm_error), .d(exception), .clk(~clock), .en(1'b1), .clr(reset));
+    dffe_ref XM_ERROR(.q(xm_error), .d(exception), .clk(~clock), .en(not_stalling), .clr(reset));
 
     // Latch data from RD 
     wire [31:0] xma_out;
-    register_32_bit XM_A(.q(xma_out), .d(dxa_out), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit XM_A(.q(xma_out), .d(dxa_out), .clk(~clock), .en(not_stalling), .clr(reset));
 
     // Latch instruction
     wire [31:0] xminsn_out;
-    register_32_bit XM_INSN(.q(xminsn_out), .d(dxinsn_out), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit XM_INSN(.q(xminsn_out), .d(dxinsn_out), .clk(~clock), .en(not_stalling), .clr(reset));
     
     // Latch PC
     wire [31:0] xmpc_out;
-    register_32_bit XM_OP(.q(xmpc_out), .d(dxpc_out), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit XM_OP(.q(xmpc_out), .d(dxpc_out), .clk(~clock), .en(not_stalling), .clr(reset));
     
     // ================Memory STAGE================= //
     wire[31:0] op_decoder_memory;
@@ -195,37 +196,40 @@ module processor(
 
     // Latch ALU result
     wire [31:0] mwo_out;
-    register_32_bit MW_O(.q(mwo_out), .d(xmo_out), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit MW_O(.q(mwo_out), .d(xmo_out), .clk(~clock), .en(not_stalling), .clr(reset));
     // Latch Error result
     wire mw_error;
-    dffe_ref MW_ERROR(.q(mw_error), .d(xm_error), .clk(~clock), .en(1'b1), .clr(reset));
+    dffe_ref MW_ERROR(.q(mw_error), .d(xm_error), .clk(~clock), .en(not_stalling), .clr(reset));
     
     // Latch Memory result
     wire [31:0] mwmemory_out;
-    register_32_bit MW_MEMORY(.q(mwmemory_out), .d(q_dmem), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit MW_MEMORY(.q(mwmemory_out), .d(q_dmem), .clk(~clock), .en(not_stalling), .clr(reset));
 
     // Latch instruction
     wire [31:0] mwinsn_out;
-    register_32_bit MW_INSN(.q(mwinsn_out), .d(xminsn_out), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit MW_INSN(.q(mwinsn_out), .d(xminsn_out), .clk(~clock), .en(not_stalling), .clr(reset));
     // Latch PC
     wire [31:0] mwpc_out;
-    register_32_bit MW_OP(.q(mwpc_out), .d(xmpc_out), .clk(~clock), .en(1'b1), .clr(reset));
+    register_32_bit MW_OP(.q(mwpc_out), .d(xmpc_out), .clk(~clock), .en(not_stalling), .clr(reset));
     
     // ================WRITEBACK STAGE=============== //
 
     // Instruction decoder writeback stage
     wire [31:0] op_decoder_write;
     assign op_decoder_write = 32'b1 << mwinsn_out[31:27];
-    wire setx, add_write, addi_write, sub_write;
+    wire setx, add_write, addi_write, sub_write, mult_write, div_write;
     wire [31:0] exception_write;
     assign setx = op_decoder_write[21];
     assign add_write = op_decoder_write[0] & (~(|mwinsn_out[6:2])) & mw_error;
     assign addi_write = op_decoder_write[5] & mw_error;
     assign sub_write = op_decoder_write[0] & (~(|mwinsn_out[6:3])) & mwinsn_out[2] & mw_error;
-    assign exception_write = add_write ? 32'd1 : (addi_write ? 32'd2 : (sub_write ? 32'd3 : 32'd0));
+    assign mult_write = mw_error & (op_decoder_write[0] & ((~mwinsn_out[6]) & (~mwinsn_out[5]) & mwinsn_out[4] & mwinsn_out[3] & (~mwinsn_out[2])));
+    assign div_write = mw_error & (op_decoder_write[0] & ((~mwinsn_out[6]) & (~mwinsn_out[5]) & mwinsn_out[4] & mwinsn_out[3] & (mwinsn_out[2])));
+    assign exception_write = div_write ? 32'd5 : (mult_write ? 32'd4 : (add_write ? 32'd1 : (addi_write ? 32'd2 : 32'd3)));
+
     // Set destination register and data to write
     // if JAL[3] set reg r31 to PC+1
-    assign ctrl_writeReg = (add_write | addi_write | sub_write) ? 5'b11110 : (setx ? 5'b11110 : (op_decoder_write[3] ? 5'b11111 : mwinsn_out[26:22]));
+    assign ctrl_writeReg = (add_write | addi_write | sub_write | mult_write | div_write) ? 5'b11110 : (setx ? 5'b11110 : (op_decoder_write[3] ? 5'b11111 : mwinsn_out[26:22]));
     assign data_writeReg = (add_write | addi_write | sub_write) ? exception_write : (setx ? {5'd0, mwinsn_out[26:0]} : (op_decoder_write[8] ? mwmemory_out : (op_decoder_write[3] ? mwpc_out : mwo_out)));
     
     // Set write enable for ALU Op and addi
