@@ -100,6 +100,10 @@ module processor(
     assign ctrl_readRegA = ((i_type_decode | jii_type_decode) ? fdinsn_out[26:22] : fdinsn_out[21:17]);
     assign ctrl_readRegB = op_decoder_decode[22] ? 5'b11110 : (i_type_decode ? fdinsn_out[21:17] : fdinsn_out[16:12]);
 
+    // Latch decoder 
+    wire [31:0] op_decoder_execute;
+    register_32_bit DX_DECODER(.q(op_decoder_execute), .d(op_decoder_decode), .clk(~clock), .en(not_stalling), .clr(reset));
+    
     // Latch data from RS RT 
     wire [31:0] dxa_out;
     wire [31:0] dxb_out;
@@ -116,14 +120,14 @@ module processor(
 
     // ================EXECUTE STAGE================= //
         
-    wire [31:0] alu_out, op_decoder_execute, data_A, data_B, multdiv_out;
+    wire [31:0] alu_out, data_A, data_B, multdiv_out;
     wire [4:0] alu_op, shiftamt;
     wire isNotEqual, isLessThan, overflow, multdiv_ready, multdiv_exception;
     assign shiftamt = dxinsn_out[11:7];
     
     // Instruction decoder Execute stage
     // wire r_type_execute, i_type_execute, ji_type_execute, jii_type_execute;
-    assign op_decoder_execute = 32'b1 << dxinsn_out[31:27];
+    // assign op_decoder_execute = 32'b1 << dxinsn_out[31:27];
     // type of instruction
     // assign r_type_execute = op_decoder_execute[0];
     // assign i_type_execute = op_decoder_execute[5] | op_decoder_execute[7] | op_decoder_execute[8] | op_decoder_execute[2] | op_decoder_execute[6];
@@ -179,6 +183,10 @@ module processor(
     wire [31:0] xma_out;
     register_32_bit XM_A(.q(xma_out), .d(dxa_out), .clk(~clock), .en(not_stalling), .clr(reset));
 
+    // Latch decoder 
+    wire [31:0] op_decoder_memory;
+    register_32_bit XM_DECODER(.q(op_decoder_memory), .d(op_decoder_execute), .clk(~clock), .en(not_stalling), .clr(reset));
+    
     // Latch instruction
     wire [31:0] xminsn_out;
     register_32_bit XM_INSN(.q(xminsn_out), .d(dxinsn_out), .clk(~clock), .en(not_stalling), .clr(reset));
@@ -188,9 +196,6 @@ module processor(
     register_32_bit XM_OP(.q(xmpc_out), .d(dxpc_out), .clk(~clock), .en(not_stalling), .clr(reset));
     
     // ================Memory STAGE================= //
-    wire[31:0] op_decoder_memory;
-    assign op_decoder_memory = 32'b1 << xminsn_out[31:27];
-
     assign wren = op_decoder_memory[7];
     assign address_dmem = xmo_out;
     assign data = xma_out;
@@ -206,6 +211,10 @@ module processor(
     wire [31:0] mwmemory_out;
     register_32_bit MW_MEMORY(.q(mwmemory_out), .d(q_dmem), .clk(~clock), .en(not_stalling), .clr(reset));
 
+    // Latch decoder 
+    wire [31:0] op_decoder_write;
+    register_32_bit MW_DECODER(.q(op_decoder_write), .d(op_decoder_memory), .clk(~clock), .en(not_stalling), .clr(reset));
+    
     // Latch instruction
     wire [31:0] mwinsn_out;
     register_32_bit MW_INSN(.q(mwinsn_out), .d(xminsn_out), .clk(~clock), .en(not_stalling), .clr(reset));
@@ -216,8 +225,6 @@ module processor(
     // ================WRITEBACK STAGE=============== //
 
     // Instruction decoder writeback stage
-    wire [31:0] op_decoder_write;
-    assign op_decoder_write = 32'b1 << mwinsn_out[31:27];
     wire setx, add_write, addi_write, sub_write, mult_write, div_write;
     wire [31:0] exception_write;
     assign setx = op_decoder_write[21];
