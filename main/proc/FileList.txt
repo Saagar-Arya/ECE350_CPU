@@ -48,5 +48,6 @@
 .\cp3-multdiv\multdiv_tb.v
 .\cp3-multdiv\sll_1_bit_64_in.v
 .\cp3-multdiv\TFF_1.v
+.\cp3-multdiv\TFF_2.v
 .\cp3-multdiv\TFF_6.v
 ..\..\test_files\Wrapper_tb.v

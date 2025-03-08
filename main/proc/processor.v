@@ -62,7 +62,6 @@ module processor(
 	output [31:0] data_writeReg;
 	input [31:0] data_readRegA, data_readRegB;
 
-	/* YOUR CODE STARTS HERE */
     // ================Program Counter=================== //
     wire branch, jump, jal, jr, bex_take, mult, div, not_stalling, flushing;
     wire[31:0] nextPC, branching_PC, target, PC_sum_out;
@@ -74,6 +73,7 @@ module processor(
     assign target = branch ? {15'd0, dxinsn_out[16:0]} : 32'd0;
 	sum PC_sum(.in1(branching_PC), .in2(target), .cin(~branch), .out(PC_sum_out));
     assign nextPC = jr ? dxa_out : (jump|jal|bex_take) ? {5'd0, dxinsn_out[26:0]} : PC_sum_out;
+    
     // ================FETCH STAGE=================== //
 
     // Latch instruction from imem
@@ -100,16 +100,22 @@ module processor(
     assign ctrl_readRegA = ((i_type_decode | jii_type_decode) ? fdinsn_out[26:22] : fdinsn_out[21:17]);
     assign ctrl_readRegB = op_decoder_decode[22] ? 5'b11110 : (i_type_decode ? fdinsn_out[21:17] : fdinsn_out[16:12]);
 
+    // Latch data from RS RT 
+    wire [31:0] dxa_out;
+    wire [31:0] dxb_out;
+    wire [31:0] dxRD_out;
+    
+    wire [31:0] decode_data_A = (op_decoder_decode[5]|op_decoder_decode[7]|op_decoder_decode[8]) ? data_readRegB : data_readRegA;
+    wire [31:0] decode_data_B = (op_decoder_decode[5]|op_decoder_decode[7]|op_decoder_decode[8]) ? {{15{fdinsn_out[16]}}, fdinsn_out[16:0]} : data_readRegB;
+
+    register_32_bit DX_A(.q(dxa_out), .d(decode_data_A), .clk(~clock), .en(not_stalling), .clr(reset));
+    register_32_bit DX_B(.q(dxb_out), .d(decode_data_B), .clk(~clock), .en(not_stalling), .clr(reset));
+    register_32_bit DX_RD(.q(dxRD_out), .d(data_readRegA), .clk(~clock), .en(not_stalling), .clr(reset));
+        
     // Latch decoder 
     wire [31:0] op_decoder_execute;
     register_32_bit DX_DECODER(.q(op_decoder_execute), .d(op_decoder_decode), .clk(~clock), .en(not_stalling), .clr(reset));
     
-    // Latch data from RS RT 
-    wire [31:0] dxa_out;
-    wire [31:0] dxb_out;
-    register_32_bit DX_A(.q(dxa_out), .d(data_readRegA), .clk(~clock), .en(not_stalling), .clr(reset));
-    register_32_bit DX_B(.q(dxb_out), .d(data_readRegB), .clk(~clock), .en(not_stalling), .clr(reset));
-
     // Latch instruction
     wire [31:0] dxinsn_out;
     register_32_bit DX_INSN(.q(dxinsn_out), .d(fdinsn_out), .clk(~clock), .en(not_stalling), .clr(reset));
@@ -149,8 +155,8 @@ module processor(
     assign bex = op_decoder_execute[22];
     assign bex_take = (bex & (|dxb_out));
 
-    assign data_A = addi_sw_lw ? dxb_out : dxa_out;
-    assign data_B = addi_sw_lw ? {{15{dxinsn_out[16]}}, dxinsn_out[16:0]} : dxb_out;
+    assign data_A = dxa_out;
+    assign data_B = dxb_out;
     assign alu_op = (bne | blt) ? 5'd1 : (addi_sw_lw ? 5'b0 : dxinsn_out[6:2]);
 
     wire mult_trigger, mult_t;
@@ -163,7 +169,7 @@ module processor(
 
     // ALU
     alu ALU(.data_operandA(data_A), .data_operandB(data_B), .ctrl_ALUopcode(alu_op), .data_result(alu_out), .ctrl_shiftamt(shiftamt), .overflow(overflow), .isNotEqual(isNotEqual), .isLessThan(isLessThan)); 
-    multdiv MULTDIV(.data_operandA(dxa_out), .data_operandB(dxb_out), .ctrl_MULT(mult_trigger), .ctrl_DIV(div_trigger), .clock(clock), .data_result(multdiv_out), .data_exception(multdiv_exception), .data_resultRDY(multdiv_ready));
+    multdiv MULTDIV(.data_operandA(data_A), .data_operandB(data_B), .ctrl_MULT(mult_trigger), .ctrl_DIV(div_trigger), .clock(clock), .data_result(multdiv_out), .data_exception(multdiv_exception), .data_resultRDY(multdiv_ready));
 
     wire[31:0] math_out;
     assign math_out = (mult|div) ? multdiv_out : alu_out;
@@ -180,8 +186,8 @@ module processor(
     dffe_ref XM_ERROR(.q(xm_error), .d(exception), .clk(~clock), .en(not_stalling), .clr(reset));
 
     // Latch data from RD 
-    wire [31:0] xma_out;
-    register_32_bit XM_A(.q(xma_out), .d(dxa_out), .clk(~clock), .en(not_stalling), .clr(reset));
+    wire [31:0] xmRD_out;
+    register_32_bit XM_A(.q(xmRD_out), .d(dxRD_out), .clk(~clock), .en(not_stalling), .clr(reset));
 
     // Latch decoder 
     wire [31:0] op_decoder_memory;
@@ -198,7 +204,7 @@ module processor(
     // ================Memory STAGE================= //
     assign wren = op_decoder_memory[7];
     assign address_dmem = xmo_out;
-    assign data = xma_out;
+    assign data = xmRD_out;
 
     // Latch ALU result
     wire [31:0] mwo_out;
@@ -242,8 +248,5 @@ module processor(
     
     // Set write enable for ALU Op and addi
     assign ctrl_writeEnable = op_decoder_write[0] | op_decoder_write[5] | op_decoder_write[3] | op_decoder_write[8] | setx;
-	
-
-	/* END CODE */
-
+    
 endmodule
