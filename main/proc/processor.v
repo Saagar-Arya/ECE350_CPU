@@ -72,7 +72,7 @@ module processor(
     assign branching_PC = branch ? dxpc_out : address_imem;
     assign target = branch ? {15'd0, dxinsn_out[16:0]} : 32'd0;
 	sum PC_sum(.in1(branching_PC), .in2(target), .cin(~branch), .out(PC_sum_out));
-    assign nextPC = jr ? dxa_out : (jump|jal|bex_take) ? {5'd0, dxinsn_out[26:0]} : PC_sum_out;
+    assign nextPC = jr ? bypass_jr : (jump|jal|bex_take) ? {5'd0, dxinsn_out[26:0]} : PC_sum_out;
     
     // ================FETCH STAGE=================== //
 
@@ -132,10 +132,10 @@ module processor(
     assign shiftamt = dxinsn_out[11:7];
     
     // Instruction decoder Execute stage
-    wire r_type_execute, i_type_execute, ji_type_execute, jii_type_execute;
+    // wire r_type_execute, i_type_execute, ji_type_execute, jii_type_execute;
     // type of instruction
     // assign r_type_execute = op_decoder_execute[0];
-    assign i_type_execute = op_decoder_execute[5] | op_decoder_execute[7] | op_decoder_execute[8] | op_decoder_execute[2] | op_decoder_execute[6];
+    // assign i_type_execute = op_decoder_execute[5] | op_decoder_execute[7] | op_decoder_execute[8] | op_decoder_execute[2] | op_decoder_execute[6];
     // assign ji_type_execute = op_decoder_execute[1] | op_decoder_execute[3] | op_decoder_execute[22] | op_decoder_execute[21];
     // assign jii_type_execute = op_decoder_execute[4];
     
@@ -154,10 +154,12 @@ module processor(
     assign bex = op_decoder_execute[22];
     assign bex_take = (bex & (|dxb_out));
 
-    wire bypassRS_m = (xminsn_out[26:22] == dxinsn_out[21:17]) & ((op_decoder_execute[0] & (op_decoder_memory[0] | op_decoder_memory[5])) | (op_decoder_execute[5] & (op_decoder_memory[0] | op_decoder_memory[5])));
-    wire bypassRT_m = (xminsn_out[26:22] == dxinsn_out[16:12]) & ((op_decoder_execute[0] & (op_decoder_memory[0] | op_decoder_memory[5])));
-    wire bypassRS_w = (mwinsn_out[26:22] == dxinsn_out[21:17]) & ((op_decoder_execute[0] & (op_decoder_write[0] | op_decoder_write[5])) | (op_decoder_execute[5] & (op_decoder_write[0] | op_decoder_write[5])));
-    wire bypassRT_w = (mwinsn_out[26:22] == dxinsn_out[16:12]) & ((op_decoder_execute[0] & (op_decoder_write[0] | op_decoder_write[5])));
+    wire bypassRS_m = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[21:17]) & ((op_decoder_execute[0] | op_decoder_execute[5]) & (op_decoder_memory[0] | op_decoder_memory[5]));
+    wire bypassRT_m = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[16:12]) & ((op_decoder_execute[0] & (op_decoder_memory[0] | op_decoder_memory[5])));
+    wire bypassRS_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[21:17]) & ((op_decoder_execute[0] | op_decoder_execute[5]) & (op_decoder_write[0] | op_decoder_write[5]));
+    wire bypassRT_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[16:12]) & ((op_decoder_execute[0] & (op_decoder_write[0] | op_decoder_write[5])));
+
+    wire[31:0] bypass_jr = (dxinsn_out[26:22] == xminsn_out[26:22]) ? xmo_out : ((dxinsn_out[26:22] == mwinsn_out[26:22]) ? mwo_out : dxa_out);
 
     assign data_A = bypassRS_m ? xmo_out : (bypassRS_w ? mwo_out : dxa_out);
     assign data_B = bypassRT_m ? xmo_out : (bypassRT_w ? mwo_out : dxb_out);
