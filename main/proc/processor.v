@@ -152,19 +152,25 @@ module processor(
     assign mult = op_decoder_execute[0] & ((~dxinsn_out[6]) & (~dxinsn_out[5]) & dxinsn_out[4] & dxinsn_out[3] & (~dxinsn_out[2]));
     assign div = op_decoder_execute[0] & ((~dxinsn_out[6]) & (~dxinsn_out[5]) & dxinsn_out[4] & dxinsn_out[3] & (dxinsn_out[2]));
     assign bex = op_decoder_execute[22];
-    assign bex_take = (bex & (|dxb_out));
+    wire [31:0] bex_bypass = op_decoder_memory[21] ? {5'd0, xminsn_out[26:0]} : (op_decoder_write[21] ? {5'd0, mwinsn_out[26:0]} : dxb_out);
+    assign bex_take = (bex & (|bex_bypass));
 
-    wire bypassRS_m = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[21:17]) & ((op_decoder_execute[0] | addi | blt | bne) & (op_decoder_memory[0] | op_decoder_memory[5]));
+    wire bypassRS_m = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[21:17]) & ((op_decoder_execute[0] | addi_sw_lw | blt | bne) & (op_decoder_memory[0] | op_decoder_memory[5]));
     wire bypassRT_m = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[16:12]) & ((op_decoder_execute[0] & (op_decoder_memory[0] | op_decoder_memory[5])));
     wire bypassRD_m = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[26:22]) & ((blt | bne) & (op_decoder_memory[0] | op_decoder_memory[5]));
-    wire bypassRS_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[21:17]) & ((op_decoder_execute[0] | addi | blt | bne) & (op_decoder_write[0] | op_decoder_write[5]));
+    wire bypassRS_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[21:17]) & ((op_decoder_execute[0] | addi_sw_lw | blt | bne) & (op_decoder_write[0] | op_decoder_write[5]));
     wire bypassRT_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[16:12]) & ((op_decoder_execute[0] & (op_decoder_write[0] | op_decoder_write[5])));
     wire bypassRD_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[26:22]) & ((blt | bne) & (op_decoder_write[0] | op_decoder_write[5]));
 
     wire[31:0] bypass_jr = (dxinsn_out[26:22] == xminsn_out[26:22]) ? xmo_out : ((dxinsn_out[26:22] == mwinsn_out[26:22]) ? mwo_out : dxa_out);
 
-    assign data_A = ((bypassRS_m & ~(blt | bne)) | bypassRD_m) ? xmo_out : (((bypassRS_w & ~(blt | bne)) | bypassRD_w) ? mwo_out : dxa_out);
-    assign data_B = (bypassRT_m | (bypassRS_m & (blt | bne))) ? xmo_out : ((bypassRT_w | (bypassRS_w & (blt | bne))) ? mwo_out : dxb_out);
+    wire bypass_exceptionRS_m = (dxinsn_out[21:17] == 5'b11110) & xm_error;
+    wire bypass_exceptionRT_m = (dxinsn_out[16:12] == 5'b11110) & xm_error;
+    wire bypass_exceptionRS_w = (dxinsn_out[21:17] == 5'b11110) & mw_error;
+    wire bypass_exceptionRT_w = (dxinsn_out[16:12] == 5'b11110) & mw_error;
+
+    assign data_A = bypass_exceptionRS_m ? exception_write_m : (bypass_exceptionRS_w ? exception_write : (((bypassRS_m & ~(blt | bne)) | bypassRD_m) ? xmo_out : (((bypassRS_w & ~(blt | bne)) | bypassRD_w) ? mwo_out : dxa_out)));
+    assign data_B = bypass_exceptionRT_m ? exception_write_m : (bypass_exceptionRT_w ? exception_write : ((bypassRT_m | (bypassRS_m & (blt | bne))) ? xmo_out : ((bypassRT_w | (bypassRS_w & (blt | bne))) ? mwo_out : dxb_out)));
     assign alu_op = (bne | blt) ? 5'd1 : (addi_sw_lw ? 5'b0 : dxinsn_out[6:2]);
 
     wire mult_trigger, mult_t;
@@ -213,6 +219,8 @@ module processor(
     assign wren = op_decoder_memory[7];
     assign address_dmem = xmo_out;
     assign data = xmRD_out;
+    wire [31:0] exception_write_m; 
+    assign exception_write_m = (op_decoder_memory[0]&(xminsn_out[6:2]==5'b00111)) ? 32'd5 : ((op_decoder_memory[0] & (xminsn_out[6:2]==5'b00110)) ? 32'd4 : ((op_decoder_memory[0] & (xminsn_out[6:2]==5'b00000)) ? 32'd1 : ((op_decoder_memory[5]) ? 32'd2 : 32'd3)));
 
     // Latch ALU result
     wire [31:0] mwo_out;
