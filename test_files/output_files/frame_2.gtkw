@@ -1,20 +1,20 @@
 [*]
 [*] GTKWave Analyzer v3.3.100 (w)1999-2019 BSI
-[*] Fri Mar 14 02:55:19 2025
+[*] Mon Mar 17 22:54:04 2025
 [*]
-[dumpfile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\test_files\output_files\branch_jump_race.vcd"
+[dumpfile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\test_files\output_files\load_to_save_bypass.vcd"
 [savefile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\frame_2.gtkw"
-[timestart] 159900
-[size] 1000 600
-[pos] -1 -1
-*-14.818501 189200 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 272600
+[size] 1400 1000
+[pos] 2378 -34
+*-14.818501 300000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] Wrapper_tb.
 [treeopen] Wrapper_tb.CPU.
 [treeopen] Wrapper_tb.CPU.FD_INSN.
 [sst_width] 197
 [signals_width] 279
 [sst_expanded] 1
-[sst_vpaned_height] 186
+[sst_vpaned_height] 621
 @28
 Wrapper_tb.CPU.clock
 Wrapper_tb.CPU.q_imem[31:0]
@@ -110,8 +110,10 @@ Wrapper_tb.CPU.bypassRD_w
 Wrapper_tb.CPU.bypassRS_m
 Wrapper_tb.CPU.bypassRS_w
 Wrapper_tb.CPU.bypassRT_m
-@29
 Wrapper_tb.CPU.bypassRT_w
+Wrapper_tb.CPU.lw_add_hazard_RS
+Wrapper_tb.CPU.lw_add_hazard_RT
+Wrapper_tb.CPU.lw_add_hazard_RD
 @420
 Wrapper_tb.CPU.dxa_out[31:0]
 Wrapper_tb.CPU.dxb_out[31:0]
@@ -166,7 +168,13 @@ Wrapper_tb.CPU.xmo_out[31:0]
 Wrapper_tb.CPU.xminsn_out[31:0]
 @420
 Wrapper_tb.CPU.xmpc_out[31:0]
+Wrapper_tb.CPU.q_dmem[31:0]
+Wrapper_tb.CPU.address_dmem[31:0]
+Wrapper_tb.CPU.data[31:0]
+Wrapper_tb.CPU.load_to_save_bypass[31:0]
+Wrapper_tb.CPU.xmRD_out[31:0]
 @28
+Wrapper_tb.CPU.wren
 Wrapper_tb.CPU.mwinsn_out[31:0]
 @420
 Wrapper_tb.CPU.mwmemory_out[31:0]
@@ -174,6 +182,45 @@ Wrapper_tb.CPU.mwmemory_out[31:0]
 Wrapper_tb.CPU.mwpc_out[31:0]
 @420
 Wrapper_tb.CPU.mwo_out[31:0]
+Wrapper_tb.CPU.ctrl_writeReg[4:0]
+@c00420
+Wrapper_tb.CPU.data_writeReg[31:0]
+@28
+(0)Wrapper_tb.CPU.data_writeReg[31:0]
+(1)Wrapper_tb.CPU.data_writeReg[31:0]
+(2)Wrapper_tb.CPU.data_writeReg[31:0]
+(3)Wrapper_tb.CPU.data_writeReg[31:0]
+(4)Wrapper_tb.CPU.data_writeReg[31:0]
+(5)Wrapper_tb.CPU.data_writeReg[31:0]
+(6)Wrapper_tb.CPU.data_writeReg[31:0]
+(7)Wrapper_tb.CPU.data_writeReg[31:0]
+(8)Wrapper_tb.CPU.data_writeReg[31:0]
+(9)Wrapper_tb.CPU.data_writeReg[31:0]
+(10)Wrapper_tb.CPU.data_writeReg[31:0]
+(11)Wrapper_tb.CPU.data_writeReg[31:0]
+(12)Wrapper_tb.CPU.data_writeReg[31:0]
+(13)Wrapper_tb.CPU.data_writeReg[31:0]
+(14)Wrapper_tb.CPU.data_writeReg[31:0]
+(15)Wrapper_tb.CPU.data_writeReg[31:0]
+(16)Wrapper_tb.CPU.data_writeReg[31:0]
+(17)Wrapper_tb.CPU.data_writeReg[31:0]
+(18)Wrapper_tb.CPU.data_writeReg[31:0]
+(19)Wrapper_tb.CPU.data_writeReg[31:0]
+(20)Wrapper_tb.CPU.data_writeReg[31:0]
+(21)Wrapper_tb.CPU.data_writeReg[31:0]
+(22)Wrapper_tb.CPU.data_writeReg[31:0]
+(23)Wrapper_tb.CPU.data_writeReg[31:0]
+(24)Wrapper_tb.CPU.data_writeReg[31:0]
+(25)Wrapper_tb.CPU.data_writeReg[31:0]
+(26)Wrapper_tb.CPU.data_writeReg[31:0]
+(27)Wrapper_tb.CPU.data_writeReg[31:0]
+(28)Wrapper_tb.CPU.data_writeReg[31:0]
+(29)Wrapper_tb.CPU.data_writeReg[31:0]
+(30)Wrapper_tb.CPU.data_writeReg[31:0]
+(31)Wrapper_tb.CPU.data_writeReg[31:0]
+@1401200
+-group_end
+@420
 Wrapper_tb.RegisterFile.r1[31:0]
 Wrapper_tb.RegisterFile.r2[31:0]
 Wrapper_tb.RegisterFile.r3[31:0]

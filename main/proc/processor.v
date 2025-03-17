@@ -65,7 +65,7 @@ module processor(
     // ================Program Counter=================== //
     wire branch, jump, jal, jr, bex_take, mult, div, not_stalling, flushing;
     wire[31:0] nextPC, branching_PC, target, PC_sum_out;
-    assign not_stalling = ~((mult|div) & (~multdiv_ready));
+    assign not_stalling = ~(((mult|div) & (~multdiv_ready)) | lw_add_hazard_trigger);
     assign flushing = (branch | jump | jal | jr | bex_take) & clock ;
 
     register_32_bit PC(.q(address_imem), .d(nextPC), .clk(~clock), .en(not_stalling), .clr(reset));
@@ -169,9 +169,16 @@ module processor(
     wire bypass_exceptionRS_w = (dxinsn_out[21:17] == 5'b11110) & mw_error;
     wire bypass_exceptionRT_w = (dxinsn_out[16:12] == 5'b11110) & mw_error;
 
-    assign data_A = bypass_exceptionRS_m ? exception_write_m : (bypass_exceptionRS_w ? exception_write : (((bypassRS_m & ~(blt | bne)) | bypassRD_m) ? xmo_out : (((bypassRS_w & ~(blt | bne)) | bypassRD_w) ? mwo_out : dxa_out)));
-    assign data_B = bypass_exceptionRT_m ? exception_write_m : (bypass_exceptionRT_w ? exception_write : ((bypassRT_m | (bypassRS_m & (blt | bne))) ? xmo_out : ((bypassRT_w | (bypassRS_w & (blt | bne))) ? mwo_out : dxb_out)));
+    wire lw_add_hazard_RS = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[21:17]) & (op_decoder_execute[0] | addi_sw_lw | blt | bne) & op_decoder_memory[8];
+    wire lw_add_hazard_RT = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[16:12]) & (op_decoder_execute[0]) & op_decoder_memory[8];
+    wire lw_add_hazard_RD = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[26:22]) & (blt | bne) & op_decoder_memory[8];
+
+    assign data_A = (lw_add_hazard_RS ? q_dmem : (bypass_exceptionRS_m ? exception_write_m : (bypass_exceptionRS_w ? exception_write : (((bypassRS_m & ~(blt | bne)) | bypassRD_m) ? xmo_out : (((bypassRS_w & ~(blt | bne)) | bypassRD_w) ? mwo_out : dxa_out)))));
+    assign data_B = (lw_add_hazard_RT ? q_dmem : (bypass_exceptionRT_m ? exception_write_m : (bypass_exceptionRT_w ? exception_write : ((bypassRT_m | (bypassRS_m & (blt | bne))) ? xmo_out : ((bypassRT_w | (bypassRS_w & (blt | bne))) ? mwo_out : dxb_out)))));
     assign alu_op = (bne | blt) ? 5'd1 : (addi_sw_lw ? 5'b0 : dxinsn_out[6:2]);
+
+    wire[31:0] memory_bypass;
+    assign memory_bypass = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[26:22]) & ((sw) & (op_decoder_memory[0] | op_decoder_memory[5]));
 
     wire mult_trigger, mult_t;
     dffe_ref MULT(.q(mult_t), .d(mult), .clk(~clock), .en(1'd1), .clr(reset));
@@ -180,6 +187,10 @@ module processor(
     wire div_trigger, div_t;
     dffe_ref DIV(.q(div_t), .d(div), .clk(~clock), .en(1'd1), .clr(reset));
     assign div_trigger = div & ~div_t;
+
+    wire lw_add_hazard_trigger, lw_add_hazard_RS_t;
+    dffe_ref lw_add_hazard(.q(lw_add_hazard_RS_t), .d(lw_add_hazard_RS|lw_add_hazard_RT|lw_add_hazard_RD), .clk(~clock), .en(1'd1), .clr(reset));
+    assign lw_add_hazard_trigger = (lw_add_hazard_RS|lw_add_hazard_RT|lw_add_hazard_RD) & ~lw_add_hazard_RS_t;
 
     // ALU
     alu ALU(.data_operandA(data_A), .data_operandB(data_B), .ctrl_ALUopcode(alu_op), .data_result(alu_out), .ctrl_shiftamt(shiftamt), .overflow(overflow), .isNotEqual(isNotEqual), .isLessThan(isLessThan)); 
@@ -200,8 +211,9 @@ module processor(
     dffe_ref XM_ERROR(.q(xm_error), .d(exception), .clk(~clock), .en(not_stalling), .clr(reset));
 
     // Latch data from RD 
-    wire [31:0] xmRD_out;
-    register_32_bit XM_A(.q(xmRD_out), .d(dxRD_out), .clk(~clock), .en(not_stalling), .clr(reset));
+    wire [31:0] xmRD_out, bypassRD;
+    assign bypassRD = memory_bypass ? xmo_out : dxRD_out;
+    register_32_bit XM_A(.q(xmRD_out), .d(bypassRD), .clk(~clock), .en(not_stalling), .clr(reset));
 
     // Latch decoder 
     wire [31:0] op_decoder_memory;
@@ -218,10 +230,10 @@ module processor(
     // ================Memory STAGE================= //
     assign wren = op_decoder_memory[7];
     assign address_dmem = xmo_out;
-    assign data = xmRD_out;
+    assign data = ((|xminsn_out[26:22]) & (xminsn_out[26:22] == mwinsn_out[26:22]) & op_decoder_memory[7] & op_decoder_write[8]) ? mwmemory_out : xmRD_out;
     wire [31:0] exception_write_m; 
     assign exception_write_m = (op_decoder_memory[0]&(xminsn_out[6:2]==5'b00111)) ? 32'd5 : ((op_decoder_memory[0] & (xminsn_out[6:2]==5'b00110)) ? 32'd4 : ((op_decoder_memory[0] & (xminsn_out[6:2]==5'b00000)) ? 32'd1 : ((op_decoder_memory[5]) ? 32'd2 : 32'd3)));
-
+    
     // Latch ALU result
     wire [31:0] mwo_out;
     register_32_bit MW_O(.q(mwo_out), .d(xmo_out), .clk(~clock), .en(not_stalling), .clr(reset));
@@ -243,7 +255,7 @@ module processor(
     // Latch PC
     wire [31:0] mwpc_out;
     register_32_bit MW_OP(.q(mwpc_out), .d(xmpc_out), .clk(~clock), .en(not_stalling), .clr(reset));
-    
+    // Latch 
     // ================WRITEBACK STAGE=============== //
 
     // Instruction decoder writeback stage
