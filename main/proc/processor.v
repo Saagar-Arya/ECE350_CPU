@@ -66,7 +66,7 @@ module processor(
     wire branch, jump, jal, jr, bex_take, mult, div, not_stalling, flushing;
     wire[31:0] nextPC, branching_PC, target, PC_sum_out;
     assign not_stalling = ~(((mult|div) & (~multdiv_ready)) | lw_add_hazard_trigger);
-    assign flushing = (branch | jump | jal | jr | bex_take) & clock ;
+    assign flushing = (branch | jump | jal | jr | bex_take) & clock & not_stalling ;
 
     register_32_bit PC(.q(address_imem), .d(nextPC), .clk(~clock), .en(not_stalling), .clr(reset));
     assign branching_PC = branch ? dxpc_out : address_imem;
@@ -162,19 +162,22 @@ module processor(
     wire bypassRT_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[16:12]) & ((op_decoder_execute[0] & (op_decoder_write[0] | op_decoder_write[5])));
     wire bypassRD_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[26:22]) & ((blt | bne) & (op_decoder_write[0] | op_decoder_write[5]));
 
-    wire[31:0] bypass_jr = (dxinsn_out[26:22] == xminsn_out[26:22]) ? xmo_out : ((dxinsn_out[26:22] == mwinsn_out[26:22]) ? mwo_out : dxa_out);
+    wire[31:0] bypass_jr = ((dxinsn_out[26:22] == xminsn_out[26:22]) & op_decoder_memory[8]) ? q_dmem : (((dxinsn_out[26:22] == mwinsn_out[26:22]) & op_decoder_write[8]) ? mwmemory_out : ((dxinsn_out[26:22] == xminsn_out[26:22]) ? xmo_out : ((dxinsn_out[26:22] == mwinsn_out[26:22]) ? mwo_out : dxa_out)));
 
     wire bypass_exceptionRS_m = (dxinsn_out[21:17] == 5'b11110) & xm_error;
     wire bypass_exceptionRT_m = (dxinsn_out[16:12] == 5'b11110) & xm_error;
     wire bypass_exceptionRS_w = (dxinsn_out[21:17] == 5'b11110) & mw_error;
     wire bypass_exceptionRT_w = (dxinsn_out[16:12] == 5'b11110) & mw_error;
 
-    wire lw_add_hazard_RS = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[21:17]) & (op_decoder_execute[0] | addi_sw_lw | blt | bne) & op_decoder_memory[8];
-    wire lw_add_hazard_RT = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[16:12]) & (op_decoder_execute[0]) & op_decoder_memory[8];
-    wire lw_add_hazard_RD = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[26:22]) & (blt | bne) & op_decoder_memory[8];
+    wire lw_add_hazard_RS_m = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[21:17]) & (op_decoder_execute[0] | addi_sw_lw | blt | bne) & op_decoder_memory[8];
+    wire lw_add_hazard_RT_m = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[16:12]) & (op_decoder_execute[0]) & op_decoder_memory[8];
+    wire lw_add_hazard_RD_m = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[26:22]) & (blt | bne) & op_decoder_memory[8];
+    wire lw_add_hazard_RS_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[21:17]) & (op_decoder_execute[0] | addi_sw_lw | blt | bne) & op_decoder_write[8];
+    wire lw_add_hazard_RT_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[16:12]) & (op_decoder_execute[0]) & op_decoder_write[8];
+    wire lw_add_hazard_RD_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[26:22]) & (blt | bne) & op_decoder_write[8];
 
-    assign data_A = (lw_add_hazard_RS ? q_dmem : (bypass_exceptionRS_m ? exception_write_m : (bypass_exceptionRS_w ? exception_write : (((bypassRS_m & ~(blt | bne)) | bypassRD_m) ? xmo_out : (((bypassRS_w & ~(blt | bne)) | bypassRD_w) ? mwo_out : dxa_out)))));
-    assign data_B = (lw_add_hazard_RT ? q_dmem : (bypass_exceptionRT_m ? exception_write_m : (bypass_exceptionRT_w ? exception_write : ((bypassRT_m | (bypassRS_m & (blt | bne))) ? xmo_out : ((bypassRT_w | (bypassRS_w & (blt | bne))) ? mwo_out : dxb_out)))));
+    assign data_A = lw_add_hazard_RD_m ? q_dmem : (lw_add_hazard_RD_w ? mwmemory_out : ((lw_add_hazard_RS_m & ~(blt|bne)) ? q_dmem : ( (lw_add_hazard_RS_w & ~(blt|bne)) ? mwmemory_out : (bypass_exceptionRS_m ? exception_write_m : (bypass_exceptionRS_w ? exception_write : (((bypassRS_m & ~(blt | bne)) | bypassRD_m) ? xmo_out : (((bypassRS_w & ~(blt | bne)) | bypassRD_w) ? mwo_out : dxa_out)))))));
+    assign data_B = (lw_add_hazard_RS_m & (blt | bne)) ? q_dmem : ((lw_add_hazard_RS_w & (blt | bne)) ? mwmemory_out : (lw_add_hazard_RT_m ? q_dmem : (bypass_exceptionRT_m ? exception_write_m : (bypass_exceptionRT_w ? exception_write : ((bypassRT_m | (bypassRS_m & (blt | bne))) ? xmo_out : ((bypassRT_w | (bypassRS_w & (blt | bne))) ? mwo_out : dxb_out))))));
     assign alu_op = (bne | blt) ? 5'd1 : (addi_sw_lw ? 5'b0 : dxinsn_out[6:2]);
 
     wire[31:0] memory_bypass;
@@ -189,8 +192,8 @@ module processor(
     assign div_trigger = div & ~div_t;
 
     wire lw_add_hazard_trigger, lw_add_hazard_RS_t;
-    dffe_ref lw_add_hazard(.q(lw_add_hazard_RS_t), .d(lw_add_hazard_RS|lw_add_hazard_RT|lw_add_hazard_RD), .clk(~clock), .en(1'd1), .clr(reset));
-    assign lw_add_hazard_trigger = (lw_add_hazard_RS|lw_add_hazard_RT|lw_add_hazard_RD) & ~lw_add_hazard_RS_t;
+    dffe_ref lw_add_hazard(.q(lw_add_hazard_RS_t), .d(lw_add_hazard_RS_m|lw_add_hazard_RT_m|lw_add_hazard_RD_m), .clk(~clock), .en(1'd1), .clr(reset));
+    assign lw_add_hazard_trigger = (lw_add_hazard_RS_m|lw_add_hazard_RT_m|lw_add_hazard_RD_m) & ~lw_add_hazard_RS_t;
 
     // ALU
     alu ALU(.data_operandA(data_A), .data_operandB(data_B), .ctrl_ALUopcode(alu_op), .data_result(alu_out), .ctrl_shiftamt(shiftamt), .overflow(overflow), .isNotEqual(isNotEqual), .isLessThan(isLessThan)); 

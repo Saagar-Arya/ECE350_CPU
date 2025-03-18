@@ -1,18 +1,19 @@
 [*]
 [*] GTKWave Analyzer v3.3.100 (w)1999-2019 BSI
-[*] Mon Mar 17 22:54:04 2025
+[*] Tue Mar 18 00:30:41 2025
 [*]
-[dumpfile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\test_files\output_files\load_to_save_bypass.vcd"
+[dumpfile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\test_files\output_files\lw_jr.vcd"
 [savefile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\frame_2.gtkw"
-[timestart] 272600
-[size] 1400 1000
-[pos] 2378 -34
-*-14.818501 300000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 175700
+[size] 1280 1000
+[pos] 2498 -34
+*-14.818501 240000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] Wrapper_tb.
-[treeopen] Wrapper_tb.CPU.
 [treeopen] Wrapper_tb.CPU.FD_INSN.
+[treeopen] Wrapper_tb.RegisterFile.
+[treeopen] Wrapper_tb.RegisterFile.reg8.
 [sst_width] 197
-[signals_width] 279
+[signals_width] 264
 [sst_expanded] 1
 [sst_vpaned_height] 621
 @28
@@ -106,14 +107,19 @@ Wrapper_tb.CPU.op_decoder_decode[31:0]
 Wrapper_tb.CPU.dxpc_out[31:0]
 @28
 Wrapper_tb.CPU.bypassRD_m
-Wrapper_tb.CPU.bypassRD_w
 Wrapper_tb.CPU.bypassRS_m
-Wrapper_tb.CPU.bypassRS_w
 Wrapper_tb.CPU.bypassRT_m
+Wrapper_tb.CPU.bypassRD_w
+Wrapper_tb.CPU.bypassRS_w
 Wrapper_tb.CPU.bypassRT_w
-Wrapper_tb.CPU.lw_add_hazard_RS
-Wrapper_tb.CPU.lw_add_hazard_RT
-Wrapper_tb.CPU.lw_add_hazard_RD
+Wrapper_tb.CPU.lw_add_hazard_RD_m
+Wrapper_tb.CPU.lw_add_hazard_RS_m
+Wrapper_tb.CPU.lw_add_hazard_RT_m
+Wrapper_tb.CPU.lw_add_hazard_RD_w
+Wrapper_tb.CPU.lw_add_hazard_RS_w
+Wrapper_tb.CPU.lw_add_hazard_RT_w
+@421
+Wrapper_tb.CPU.bypass_jr[31:0]
 @420
 Wrapper_tb.CPU.dxa_out[31:0]
 Wrapper_tb.CPU.dxb_out[31:0]
@@ -171,7 +177,6 @@ Wrapper_tb.CPU.xmpc_out[31:0]
 Wrapper_tb.CPU.q_dmem[31:0]
 Wrapper_tb.CPU.address_dmem[31:0]
 Wrapper_tb.CPU.data[31:0]
-Wrapper_tb.CPU.load_to_save_bypass[31:0]
 Wrapper_tb.CPU.xmRD_out[31:0]
 @28
 Wrapper_tb.CPU.wren
@@ -227,6 +232,8 @@ Wrapper_tb.RegisterFile.r3[31:0]
 @24
 Wrapper_tb.RegisterFile.r4[31:0]
 @420
+Wrapper_tb.RegisterFile.r7[31:0]
+Wrapper_tb.RegisterFile.r8[31:0]
 Wrapper_tb.RegisterFile.r10[31:0]
 [pattern_trace] 1
 [pattern_trace] 0
