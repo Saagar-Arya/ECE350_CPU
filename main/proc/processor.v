@@ -177,11 +177,12 @@ module processor(
     wire lw_add_hazard_RD_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[26:22]) & (blt | bne) & op_decoder_write[8];
 
     assign data_A = lw_add_hazard_RD_m ? q_dmem : (lw_add_hazard_RD_w ? mwmemory_out : ((lw_add_hazard_RS_m & ~(blt|bne)) ? q_dmem : ( (lw_add_hazard_RS_w & ~(blt|bne)) ? mwmemory_out : (bypass_exceptionRS_m ? exception_write_m : (bypass_exceptionRS_w ? exception_write : (((bypassRS_m & ~(blt | bne)) | bypassRD_m) ? xmo_out : (((bypassRS_w & ~(blt | bne)) | bypassRD_w) ? mwo_out : dxa_out)))))));
-    assign data_B = (lw_add_hazard_RS_m & (blt | bne)) ? q_dmem : ((lw_add_hazard_RS_w & (blt | bne)) ? mwmemory_out : (lw_add_hazard_RT_m ? q_dmem : (bypass_exceptionRT_m ? exception_write_m : (bypass_exceptionRT_w ? exception_write : ((bypassRT_m | (bypassRS_m & (blt | bne))) ? xmo_out : ((bypassRT_w | (bypassRS_w & (blt | bne))) ? mwo_out : dxb_out))))));
+    assign data_B = (lw_add_hazard_RS_m & (blt | bne)) ? q_dmem : ((lw_add_hazard_RS_w & (blt | bne)) ? mwmemory_out : (lw_add_hazard_RT_m ? q_dmem : (lw_add_hazard_RT_w ? mwmemory_out : (bypass_exceptionRT_m ? exception_write_m : (bypass_exceptionRT_w ? exception_write : ((bypassRT_m | (bypassRS_m & (blt | bne))) ? xmo_out : ((bypassRT_w | (bypassRS_w & (blt | bne))) ? mwo_out : dxb_out)))))));
     assign alu_op = (bne | blt) ? 5'd1 : (addi_sw_lw ? 5'b0 : dxinsn_out[6:2]);
 
-    wire[31:0] memory_bypass;
+    wire memory_bypass, memory_bypass_w;
     assign memory_bypass = (|xminsn_out[26:22]) & (xminsn_out[26:22] == dxinsn_out[26:22]) & ((sw) & (op_decoder_memory[0] | op_decoder_memory[5]));
+    assign memory_bypass_w = (|mwinsn_out[26:22]) & (mwinsn_out[26:22] == dxinsn_out[26:22]) & ((sw) & (op_decoder_write[0] | op_decoder_write[5]));
 
     wire mult_trigger, mult_t;
     dffe_ref MULT(.q(mult_t), .d(mult), .clk(~clock), .en(1'd1), .clr(reset));
@@ -215,7 +216,7 @@ module processor(
 
     // Latch data from RD 
     wire [31:0] xmRD_out, bypassRD;
-    assign bypassRD = memory_bypass ? xmo_out : dxRD_out;
+    assign bypassRD = memory_bypass ? xmo_out : (memory_bypass_w ? mwo_out : dxRD_out);
     register_32_bit XM_A(.q(xmRD_out), .d(bypassRD), .clk(~clock), .en(not_stalling), .clr(reset));
 
     // Latch decoder 
