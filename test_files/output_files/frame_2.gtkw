@@ -1,13 +1,13 @@
 [*]
 [*] GTKWave Analyzer v3.3.100 (w)1999-2019 BSI
-[*] Tue Mar 18 00:57:06 2025
+[*] Tue Mar 18 01:17:35 2025
 [*]
-[dumpfile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\test_files\output_files\misc_memory.vcd"
+[dumpfile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\test_files\output_files\jr.vcd"
 [savefile] "C:\Users\Saagar\Desktop\ECE_350\ECE350_CPU\test_files\output_files\frame_2.gtkw"
-[timestart] 1781000
-[size] 1408 1000
-[pos] 2292 -34
-*-14.818501 1840000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[timestart] 319700
+[size] 1436 1000
+[pos] 2368 -27
+*-14.818501 360000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] Wrapper_tb.
 [treeopen] Wrapper_tb.CPU.FD_INSN.
 [treeopen] Wrapper_tb.RegisterFile.
@@ -118,8 +118,9 @@ Wrapper_tb.CPU.lw_add_hazard_RT_m
 Wrapper_tb.CPU.lw_add_hazard_RD_w
 Wrapper_tb.CPU.lw_add_hazard_RS_w
 Wrapper_tb.CPU.lw_add_hazard_RT_w
-@420
+@421
 Wrapper_tb.CPU.bypass_jr[31:0]
+@420
 Wrapper_tb.CPU.dxa_out[31:0]
 Wrapper_tb.CPU.dxb_out[31:0]
 Wrapper_tb.CPU.dxRD_out[31:0]
